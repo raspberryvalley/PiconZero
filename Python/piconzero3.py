@@ -1,7 +1,7 @@
 # Python library for 4tronix Picon Zero
 # Note that all I2C accesses are wrapped in try clauses with repeats
 #
-# modified for Python 3 by Petr
+# modified for Python 3 by the Raspberry Valley team
 
 import smbus, time
  
@@ -38,16 +38,41 @@ def getRevision():
                 print ("Error in getRevision(), retrying")
 #---------------------------------------------
 
+# motor extensions
+
+# adding current speed for adding new features (increase speed, decrease speed)
+# current speed values are set in the main motor function: setMotor. We assume 
+# it is always called
+
+CURRENTSPEED0 = 0  # current speed of motor 0
+CURRENTSPEED1 = 0  # current speed of motor 1
+
+# we also add 'old speed' for each motor. Again to add some interesting functionality
+# old speed values are again set in the main motor function: setMotor. We assume
+# it is always called
+
+OLDSPEED0 = 0  # old (previous) speed setting of motor 0
+OLDSPEED1 = 0  # old (previous) speed setting of motor 1
 
 #---------------------------------------------
 # motor must be in range 0..1
 # value must be in range -128 - +127
 # values of -127, -128, +127 are treated as always ON,, no PWM
 def setMotor (motor, value):
+    global CURRENTSPEED0
+    global CURRENTSPEED1
+    global OLDSPEED0
+    global OLDSPEED1
     if (motor>=0 and motor<=1 and value>=-128 and value<128):
         for i in range(RETRIES):
             try:
                 bus.write_byte_data (pzaddr, motor, value)
+                if motor == 0:
+                    OLDSPEED0 = CURRENTSPEED0
+                    CURRENTSPEED0 = value
+                else:
+                    OLDSPEED1 = CURRENTSPEED1
+                    CURRENTSPEED1 = value
                 break
             except:
                 if (DEBUG):
@@ -72,6 +97,16 @@ def spinRight (speed):
 def stop():
     setMotor (0, 0)
     setMotor (1, 0)
+
+# increase speed: increases speed by delta
+def increaseSpeed(delta):
+    setMotor(0, CURRENTSPEED0 + delta)
+    setMotor(1, CURRENTSPEED1 + delta)
+
+# set previous speed values
+def previousSpeed():
+    setMotor (0, OLDSPEED0)
+    setMotor (1, OLDSPEED1)
 
 #---------------------------------------------
 
@@ -210,4 +245,3 @@ def cleanup ():
                 print ("Error in cleanup(), retrying")
     time.sleep(0.001)   # 1ms delay to allow time to complete
 #---------------------------------------------
-
